@@ -1,0 +1,361 @@
+GalaxyMechanics/
+│
+├── Core/
+│   ├── GalaxyCore.hx
+│   ├── GalaxyNote.hx
+│   ├── GalaxyNoteHooks.hx
+│   ├── GalaxyStrum.hx
+│   └── GalaxyStrumHooks.hx
+│
+├── source/
+│   ├── BlendModeEffect.hx
+│   ├── OverlayShader.hx
+│   ├── PlayMoving.hx
+│   └── PlayWindow.hx
+│
+├── 3D/
+│   ├── Note3D.hx
+│   ├── Perspective.hx
+│   ├── ToWorld.hx
+│   ├── ToScreen.hx
+│   └── RenderPath.hx
+│
+├── Render/
+│   ├── GalaxyShader.hx
+│   ├── GalaxyBlend.hx
+│   └── Galaxy3D.hx
+│
+├── Notes/
+│   ├── MoverNotas.hx
+│   ├── CambiarVelocidadNotas.hx
+│   ├── InvertirNotas.hx
+│   ├── RotarNotas.hx
+│   ├── OcultarNotas.hx
+│   ├── EliminarNotas.hx
+│   ├── MoverSustains.hx
+│   └── CambiarAlphaNotas.hx
+│
+├── Strums/
+│   ├── MoverStrums.hx
+│   ├── MoverStrumsVertical.hx
+│   ├── MoverStrumsCircular.hx
+│   ├── RotarStrums.hx
+│   └── StrumPerspective.hx
+│
+├── Window/
+│   ├── MoverVentana.hx
+│   ├── RedimensionarVentana.hx
+│   ├── VentanaSinusoidal.hx
+│   ├── VentanaShake.hx
+│   └── VentanaCenter.hx
+│
+├── Objects/
+│   ├── CloneNotes.hx
+│   ├── GenerateStrums.hx
+│   └── GenerateObjects.hx
+│
+└── Effects/
+    ├── BeatCharacterAnimation.hx
+    ├── DamageOnHit.hx
+    └── ChangeCameraZoom.hx
+
+
+
+
+
+reset()	    Restablecer variables internas
+pos()	    Calcular posición de las notas
+spos()	    Calcular posición de los strums
+pspos()	    Posición especial de strums
+ongood()	Ejecutar algo cuando una nota recibe un hit
+shape()	    Modificar/renderizar la forma de una nota, especialmente sustains
+show()	    Determinar cuándo una nota deja de mostrarse
+kill()	    Determinar cuándo una nota puede ser eliminada
+ups()	    Determinar dirección/orientación de scroll
+stry()	    Obtener la posición de la línea de strums
+clone()	    Crear/manipular clones de notas
+special()	Crear objetos/strums adicionales
+beatHit()	Ejecutar acciones en beats concretos
+
+
+
+M_galaxy.hx	        pos()
+M_game.hx	        reset(), pos(), spos(), show(), kill(), ups(), stry()
+M_kastimagina.hx	pos(), spos(), show(), kill(), stry()
+M_cona.hx	        pos(), spos(), ups(), stry(), kill()
+M_underworld.hx	    pos(), spos(), pspos(), show(), kill(), ups(), stry()
+M_cyber.hx	        nreset(), pos(), spos(), show(), kill(), move()
+M_familanna.hx	    reset(), pos(), spos(), pspos(), ongood(), show(), kill()
+M_newton.hx	        reset(), pos(), spos(), pspos(), shape(), show(), kill(), triangles()
+M_destiny.hx	    reset(), pos(), spos(), show(), kill(), ongood(), special() + R_destiny.start()
+M_peace.hx	        reset(), pos(), spos(), show(), kill(), ongood(), clone(), special(), beatHit() + R_peace.start()
+RenderPath.hx	    new(), start()
+R_newton	        start()
+R_destiny	        start()
+R_peace	            start()
+
+
+M_galaxy
+pos()
+├── velocidad 0.8
+├── velocidad 2.0
+├── aceleración parabólica
+└── movimiento normal
+
+M_game
+reset()
+└── times = 0
+└── temp = 0
+└── ptemp = 0
+
+pos()
+├── posición X normal/especial
+├── sustain X offset
+├── velocidad modificada
+├── aceleración
+├── movimiento de notas por segmentos
+├── movimiento según ylist[]
+└── modificación de escala de sustain
+
+spos()
+├── movimiento vertical de strums
+├── intercambio de posiciones
+├── rotación de posiciones
+├── actualización de xlist[]
+├── actualización de pxlist[]
+├── actualización de nlist[]
+├── actualización de pnlist[]
+└── modificación de PlayMoving.sy
+
+show()
+├── límite especial
+├── límite basado en sy
+├── límite basado en ylist
+└── límite normal de pantalla
+
+ups()
+├── determina si está arriba
+├── determina si está abajo
+└── cambia angle = 0/180
+
+stry()
+├── strumLine.y
+└── ylist[noteData]
+
+M_kastimagina
+shinelist[]
+
+pos()
+├── movimiento normal
+├── movimiento alternado
+├── movimiento según noteData
+└── uso de shinelist
+
+spos()
+├── movimiento de strums
+└── uso de shinelist
+
+show()
+├── aparición retrasada
+├── límites de pantalla
+└── shinelist
+
+kill()
+├── tooLate
+├── límites de pantalla
+└── shinelist
+
+stry()
+└── posición fija 188/412
+
+M_cona
+pos()
+├── cambios de velocidad
+├── movimiento vertical
+├── escalado de sustains
+├── movimientos por patrones
+└── posiciones especiales
+
+spos()
+├── movimiento vertical
+├── patrones periódicos
+├── movimiento X
+└── actualización ylist
+
+ups()
+├── dirección
+├── angle
+└── scroll invertido
+
+stry()
+├── strumLine.y
+└── posiciones especiales
+
+kill()
+└── condiciones de salida
+
+M_underworld
+RenderPath
+pos()
+├── scroll normal
+├── offset temporal
+├── rotación de notas
+├── sustains mediante RenderPath
+├── perspectiva
+├── NoteObject.toScreen()
+└── movimientos circulares
+
+spos()
+├── movimiento de strums
+├── posiciones especiales
+├── escalado
+└── perspectiva
+
+pspos()
+└── posición especial
+
+show()
+└── límites especiales
+
+kill()
+└── límites especiales
+
+ups()
+└── dirección
+
+stry()
+└── posición del strum
+
+M_cyber
+pos()
+├── movimiento vertical
+├── inversión de columnas
+├── ángulo
+├── movimiento sinusoidal
+├── movimiento dependiente de ventana
+└── movimiento normal
+
+spos()
+├── movimiento vertical
+├── escalado
+├── inversión de columnas
+└── movimiento especial
+
+show()
+Límites especiales.
+
+kill()
+Límites especiales.
+
+move()
+├── desactivar fullscreen
+├── reset de ventana
+├── cambiar width
+├── cambiar height
+├── cambiar window.x
+├── cambiar window.y
+├── mover ventana sinusoidalmente
+├── mover ventana por segmentos
+├── cambiar camHUD.x
+├── cambiar PlayWindow.camz
+└── cambiar FlxG.scaleMode
+
+M_familanna
+reset()
+└── cent = [0, 0]
+
+pos()
+├── velocidad
+├── interpolación X/Y
+├── posiciones cuadradas
+├── movimientos circulares
+└── movimientos especiales
+
+spos()
+├── movimiento vertical
+├── movimiento X
+├── coseno
+└── interpolación
+
+pspos()
+├── posiciones especiales
+└── movimiento circular
+
+ongood()
+├── cambiar sy
+├── desplazar ylist
+└── desplazar pylist
+
+show()
+└── límites
+
+kill()
+├── límites
+├── salida lateral
+└── tiempo
+
+M_newton
+reset()
+pos()
+spos()
+pspos()
+shape()
+show()
+kill()
+triangles()
+
+RenderPath
+└── start()
+
+triangles()
+└── NoteObject.triangles(...)
+
+triangles()
+└── NoteObject.triangles(...)
+
+M_destiny
+pos()
+show()
+kill()
+ongood()
+special()
+
+M_peace
+reset()
+pos()
+spos()
+show()
+kill()
+ongood()
+clone()
+special()
+beatHit()
+
+pos()
+├── alpha
+├── z
+├── wx
+├── wy
+├── escala 3D
+├── perspectiva
+├── sustains
+├── NoteObject.toWorld()
+├── NoteObject.toScreen()
+├── NoteObject.triangles()
+├── RenderPath
+├── clones
+└── múltiples sistemas de perspectiva
+
+clone()
+
+ongood()
+├── destruir clone
+└── perder vida
+
+special()
+
+beatHit()
+├── beat 319 → dad.playAnim(...)
+├── beat 336 → dad.playAnim(...)
+├── beat 368 → dad.playAnim(...)
+└── beat 383 → dad.playAnim(...)
