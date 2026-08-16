@@ -55,6 +55,8 @@
 import flixel.FlxSprite;
 import flixel.FlxBasic;
 
+import states.PlayState;
+
 
 /**
  * GenerateStrums

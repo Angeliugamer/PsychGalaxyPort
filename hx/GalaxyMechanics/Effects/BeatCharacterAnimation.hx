@@ -35,6 +35,9 @@
 
 import flixel.FlxBasic;
 
+import backend.Conductor;
+import states.PlayState;
+
 
 /**
  * BeatCharacterAnimation

@@ -42,6 +42,8 @@
 
 import flixel.FlxBasic;
 
+import states.PlayState;
+
 
 /**
  * DamageOnHit

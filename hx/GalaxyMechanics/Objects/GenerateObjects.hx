@@ -47,6 +47,8 @@
 import flixel.FlxSprite;
 import flixel.util.FlxColor;
 
+import states.PlayState;
+
 
 /**
  * GenerateObjects

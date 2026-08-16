@@ -19,6 +19,7 @@ import flixel.FlxG;
 import flixel.FlxSprite;
 import flixel.math.FlxMath;
 
+import backend.Conductor;
 import objects.Note;
 import states.PlayState;
 
