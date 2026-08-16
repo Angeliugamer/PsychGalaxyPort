@@ -43,17 +43,10 @@ class GalaxyNote
      */
     public static function get(index:Int, ?mustPress:Bool = true):Note
     {
-        var group:Dynamic;
-
-        if (mustPress)
-            group = PlayState.instance.playerStrums;
-        else
-            group = PlayState.instance.opponentStrums;
-
-        if (group == null)
+        if (PlayState.instance.notes == null)
             return null;
 
-        if (index < 0 || index >= group.length)
+        if (index < 0 || index >= PlayState.instance.notes.length)
             return null;
 
         return PlayState.instance.notes.members[index];

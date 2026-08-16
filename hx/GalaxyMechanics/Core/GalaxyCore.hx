@@ -34,7 +34,10 @@ class GalaxyCore
      */
 
     // Mecánicas actualmente cargadas.
-    public static var loadedMechanics:StringMap<Dynamic> = new StringMap<Dynamic>();
+    public static var loadedMechanics:StringMap<Bool> = new StringMap<Bool>();
+
+    // Instancias HScript asociadas a las mecánicas.
+    public static var mechanicInstances:StringMap<Dynamic> = new StringMap<Dynamic>();
 
     // Datos compartidos entre las diferentes mecánicas.
     public static var data:StringMap<Dynamic> = new StringMap<Dynamic>();
@@ -72,7 +75,7 @@ class GalaxyCore
      * El archivo HScript debe haber sido cargado previamente
      * mediante addHScript().
      */
-    public static function register(name:String):Void
+    public static function register(name:String):Bool
     {
         init();
 
@@ -88,13 +91,22 @@ class GalaxyCore
         return true;
     }
 
-    public static function registerInstance(name:String, instance:Dynamic):Void
+    public static function registerInstance(
+        name:String,
+        instance:Dynamic
+    ):Bool
     {
-        if (name == null || instance == null)
-            return;
+        if (name == null || name == '')
+            return false;
 
-        loadedMechanics.set(name, instance);
+        if (instance == null)
+            return false;
+
+        mechanicInstances.set(name, instance);
+
+        return true;
     }
+
 
     /**
      * Comprueba si una mecánica está registrada.
@@ -217,22 +229,52 @@ class GalaxyCore
      */
     public static function call(
         mechanic:String,
-        method:String,
+        func:String,
         args:Array<Dynamic> = null
     ):Dynamic
     {
-        if (!loadedMechanics.exists(mechanic))
+        if (!isLoaded(mechanic))
+        {
+            trace(
+                '[GalaxyCore] Cannot call "' +
+                func +
+                '" because mechanic "' +
+                mechanic +
+                '" is not loaded.'
+            );
             return null;
+        }
 
-        var instance:Dynamic = loadedMechanics.get(mechanic);
+        if (!mechanicInstances.exists(mechanic))
+        {
+            trace(
+                '[GalaxyCore] Cannot call "' +
+                func +
+                '" because mechanic "' +
+                mechanic +
+                '" has no registered instance.'
+            );
+            return null;
+        }
+
+        var instance:Dynamic = mechanicInstances.get(mechanic);
 
         if (instance == null)
             return null;
 
-        if (!Reflect.hasField(instance, method))
+        if (!Reflect.hasField(instance, func))
+        {
+            trace(
+                '[GalaxyCore] Function "' +
+                func +
+                '" was not found in mechanic "' +
+                mechanic +
+                '".'
+            );
             return null;
+        }
 
-        var fn:Dynamic = Reflect.field(instance, method);
+        var fn:Dynamic = Reflect.field(instance, func);
 
         if (fn == null)
             return null;
@@ -240,7 +282,11 @@ class GalaxyCore
         if (args == null)
             args = [];
 
-        return Reflect.callMethod(instance, fn, args);
+        return Reflect.callMethod(
+            instance,
+            fn,
+            args
+        );
     }
 
 
@@ -323,13 +369,20 @@ class GalaxyCore
      * etc.
      */
     public static function dispatch(
-        event:String,
+        callback:String,
         args:Array<Dynamic> = null
     ):Void
     {
         for (mechanic in loadedMechanics.keys())
         {
-            call(mechanic, event, args);
+            if (!loadedMechanics.get(mechanic))
+                continue;
+
+            call(
+                mechanic,
+                callback,
+                args
+            );
         }
     }
 
@@ -348,6 +401,7 @@ class GalaxyCore
     public static function reset():Void
     {
         loadedMechanics = new StringMap<Bool>();
+        mechanicInstances = new StringMap<Dynamic>();
         data = new StringMap<Dynamic>();
 
         trace('[GalaxyCore] Reset.');
