@@ -56,7 +56,7 @@ class GalaxyNote
         if (index < 0 || index >= group.length)
             return null;
 
-        return group.members[index];
+        return PlayState.instance.notes.members[index];
     }
 
 

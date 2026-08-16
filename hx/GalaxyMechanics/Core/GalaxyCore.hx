@@ -34,7 +34,7 @@ class GalaxyCore
      */
 
     // Mecánicas actualmente cargadas.
-    public static var loadedMechanics:StringMap<Bool> = new StringMap<Bool>();
+    public static var loadedMechanics:StringMap<Dynamic> = new StringMap<Dynamic>();
 
     // Datos compartidos entre las diferentes mecánicas.
     public static var data:StringMap<Dynamic> = new StringMap<Dynamic>();
@@ -72,7 +72,7 @@ class GalaxyCore
      * El archivo HScript debe haber sido cargado previamente
      * mediante addHScript().
      */
-    public static function register(name:String):Bool
+    public static function register(name:String):Void
     {
         init();
 
@@ -88,6 +88,13 @@ class GalaxyCore
         return true;
     }
 
+    public static function registerInstance(name:String, instance:Dynamic):Void
+    {
+        if (name == null || instance == null)
+            return;
+
+        loadedMechanics.set(name, instance);
+    }
 
     /**
      * Comprueba si una mecánica está registrada.
@@ -210,36 +217,30 @@ class GalaxyCore
      */
     public static function call(
         mechanic:String,
-        func:String,
+        method:String,
         args:Array<Dynamic> = null
     ):Dynamic
     {
-        if (!isLoaded(mechanic))
-        {
-            trace(
-                '[GalaxyCore] Cannot call "' +
-                func +
-                '" because mechanic "' +
-                mechanic +
-                '" is not loaded.'
-            );
-
+        if (!loadedMechanics.exists(mechanic))
             return null;
-        }
 
-        /*
-         * Actualmente el Core no intenta buscar directamente
-         * funciones dentro de cada HScript.
-         *
-         * Psych se encargará de la comunicación mediante
-         * callOnHScript().
-         *
-         * Esta función queda como interfaz interna para nuestro
-         * sistema y posteriormente podremos hacer aquí el
-         * dispatcher real.
-         */
+        var instance:Dynamic = loadedMechanics.get(mechanic);
 
-        return null;
+        if (instance == null)
+            return null;
+
+        if (!Reflect.hasField(instance, method))
+            return null;
+
+        var fn:Dynamic = Reflect.field(instance, method);
+
+        if (fn == null)
+            return null;
+
+        if (args == null)
+            args = [];
+
+        return Reflect.callMethod(instance, fn, args);
     }
 
 
@@ -322,19 +323,13 @@ class GalaxyCore
      * etc.
      */
     public static function dispatch(
-        callback:String,
+        event:String,
         args:Array<Dynamic> = null
     ):Void
     {
         for (mechanic in loadedMechanics.keys())
         {
-            if (!loadedMechanics.get(mechanic))
-                continue;
-
-            /*
-             * El dispatcher final se implementará cuando
-             * definamos la interfaz de los módulos.
-             */
+            call(mechanic, event, args);
         }
     }
 
