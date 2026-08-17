@@ -37,13 +37,16 @@ class GalaxyCore
     public static var loadedMechanics:StringMap<Bool> = new StringMap<Bool>();
 
     // Instancias HScript asociadas a las mecánicas.
-    public static var mechanicInstances:StringMap<Dynamic> = new StringMap<Dynamic>();
+    public static var mechanicFunctions:StringMap<Dynamic> = new StringMap<Dynamic>();
 
     // Datos compartidos entre las diferentes mecánicas.
     public static var data:StringMap<Dynamic> = new StringMap<Dynamic>();
 
+    public static var mechanicPaths:StringMap<String> = new StringMap<String>();
+
     // Indica si el Core ya fue inicializado.
     public static var initialized:Bool = false;
+    
 
 
     /*
@@ -91,20 +94,83 @@ class GalaxyCore
         return true;
     }
 
-    public static function registerInstance(
+    public static function registerFunctions(
         name:String,
-        instance:Dynamic
+        functions:Dynamic
     ):Bool
     {
         if (name == null || name == '')
             return false;
 
-        if (instance == null)
+        if (functions == null)
             return false;
 
-        mechanicInstances.set(name, instance);
+        mechanicFunctions.set(name, functions);
+
+        loadedMechanics.set(name, true);
+
+        trace('[GalaxyCore] Registered functions for mechanic: ' + name);
 
         return true;
+    }
+
+    public static function registerPath(
+        name:String,
+        path:String
+    ):Bool
+    {
+        if (name == null || name == '')
+            return false;
+
+        if (path == null || path == '')
+            return false;
+
+        mechanicPaths.set(name, path);
+
+        return true;
+    }
+
+    public static function load(name:String):Bool
+    {
+        init();
+
+        if (name == null || name == '')
+        {
+            trace('[GalaxyCore] Cannot load mechanic: empty name.');
+            return false;
+        }
+
+        if (isLoaded(name))
+        {
+            return true;
+        }
+
+        if (!mechanicPaths.exists(name))
+        {
+            trace(
+                '[GalaxyCore] No path registered for mechanic: ' +
+                name
+            );
+
+            return false;
+        }
+
+        var path:String = mechanicPaths.get(name);
+
+        if (path == null || path == '')
+            return false;
+
+        trace(
+            '[GalaxyCore] Loading mechanic "' +
+            name +
+            '" from "' +
+            path +
+            '".'
+        );
+
+        addHScript(path);
+
+        return isLoaded(name);
     }
 
 
@@ -133,6 +199,8 @@ class GalaxyCore
             return false;
 
         loadedMechanics.remove(name);
+        mechanicFunctions.remove(name);
+
         trace('[GalaxyCore] Unregistered mechanic: ' + name);
 
         return true;
@@ -245,7 +313,7 @@ class GalaxyCore
             return null;
         }
 
-        if (!mechanicInstances.exists(mechanic))
+        if (!mechanicFunctions.exists(mechanic))
         {
             trace(
                 '[GalaxyCore] Cannot call "' +
@@ -257,12 +325,12 @@ class GalaxyCore
             return null;
         }
 
-        var instance:Dynamic = mechanicInstances.get(mechanic);
+        var functions:Dynamic = mechanicFunctions.get(mechanic);
 
         if (instance == null)
             return null;
 
-        if (!Reflect.hasField(instance, func))
+        if (!Reflect.hasField(functions, func))
         {
             trace(
                 '[GalaxyCore] Function "' +
@@ -274,7 +342,7 @@ class GalaxyCore
             return null;
         }
 
-        var fn:Dynamic = Reflect.field(instance, func);
+        var fn:Dynamic = Reflect.field(functions, func);
 
         if (fn == null)
             return null;
@@ -283,7 +351,7 @@ class GalaxyCore
             args = [];
 
         return Reflect.callMethod(
-            instance,
+            functions,
             fn,
             args
         );
@@ -401,7 +469,8 @@ class GalaxyCore
     public static function reset():Void
     {
         loadedMechanics = new StringMap<Bool>();
-        mechanicInstances = new StringMap<Dynamic>();
+        mechanicFunctions = new StringMap<Dynamic>();
+        mechanicPaths = new StringMap<String>();
         data = new StringMap<Dynamic>();
 
         trace('[GalaxyCore] Reset.');
