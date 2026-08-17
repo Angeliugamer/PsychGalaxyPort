@@ -36,13 +36,15 @@ class GalaxyCore
     // Mecánicas actualmente cargadas.
     public static var loadedMechanics:StringMap<Bool> = new StringMap<Bool>();
 
-    // Instancias HScript asociadas a las mecánicas.
+    // Funciones expuestas por cada mecánica.
     public static var mechanicFunctions:StringMap<Dynamic> = new StringMap<Dynamic>();
 
     // Datos compartidos entre las diferentes mecánicas.
     public static var data:StringMap<Dynamic> = new StringMap<Dynamic>();
 
     public static var mechanicPaths:StringMap<String> = new StringMap<String>();
+
+    public static var mechanicBasePath:String = 'mods/FNGalaxy Port/hx/GalaxyMechanics/';
 
     // Indica si el Core ya fue inicializado.
     public static var initialized:Bool = false;
@@ -62,6 +64,8 @@ class GalaxyCore
 
         initialized = true;
 
+        registerDefaultPaths();
+
         trace('[GalaxyCore] Initialized.');
     }
 
@@ -78,6 +82,7 @@ class GalaxyCore
      * El archivo HScript debe haber sido cargado previamente
      * mediante addHScript().
      */
+
     public static function register(name:String):Bool
     {
         init();
@@ -129,6 +134,50 @@ class GalaxyCore
 
         return true;
     }
+
+    public static function registerDefaultPaths():Void
+    {
+        registerPath('MoverNotas', mechanicBasePath + 'Notes/MoverNotas.hx');
+        registerPath('CambiarVelocidadNotas', mechanicBasePath + 'Notes/CambiarVelocidadNotas.hx');
+        registerPath('InvertirNotas', mechanicBasePath + 'Notes/InvertirNotas.hx');
+        registerPath('RotarNotas', mechanicBasePath + 'Notes/RotarNotas.hx');
+        registerPath('OcultarNotas', mechanicBasePath + 'Notes/OcultarNotas.hx');
+        registerPath('EliminarNotas', mechanicBasePath + 'Notes/EliminarNotas.hx');
+        registerPath('MoverSustains', mechanicBasePath + 'Notes/MoverSustains.hx');
+        registerPath('CambiarAlphaNotas', mechanicBasePath + 'Notes/CambiarAlphaNotas.hx');
+
+        registerPath('MoverStrums', mechanicBasePath + 'Strums/MoverStrums.hx');
+        registerPath('MoverStrumsVertical', mechanicBasePath + 'Strums/MoverStrumsVertical.hx');
+        registerPath('MoverStrumsCircular', mechanicBasePath + 'Strums/MoverStrumsCircular.hx');
+        registerPath('RotarStrums', mechanicBasePath + 'Strums/RotarStrums.hx');
+        registerPath('StrumPerspective', mechanicBasePath + 'Strums/StrumPerspective.hx');
+
+        registerPath('MoverVentana', mechanicBasePath + 'Window/MoverVentana.hx');
+        registerPath('RedimensionarVentana', mechanicBasePath + 'Window/RedimensionarVentana.hx');
+        registerPath('VentanaSinusoidal', mechanicBasePath + 'Window/VentanaSinusoidal.hx');
+        registerPath('VentanaShake', mechanicBasePath + 'Window/VentanaShake.hx');
+        registerPath('VentanaCenter', mechanicBasePath + 'Window/VentanaCenter.hx');
+
+        registerPath('Note3D', mechanicBasePath + '3D/Note3D.hx');
+        registerPath('Perspective', mechanicBasePath + '3D/Perspective.hx');
+        registerPath('ToWorld', mechanicBasePath + '3D/ToWorld.hx');
+        registerPath('ToScreen', mechanicBasePath + '3D/ToScreen.hx');
+        registerPath('RenderPath', mechanicBasePath + '3D/RenderPath.hx');
+
+        registerPath('GalaxyShader', mechanicBasePath + 'Render/GalaxyShader.hx');
+        registerPath('GalaxyBlend', mechanicBasePath + 'Render/GalaxyBlend.hx');
+        registerPath('Galaxy3D', mechanicBasePath + 'Render/Galaxy3D.hx');
+
+        registerPath('CloneNotes', mechanicBasePath + 'Objects/CloneNotes.hx');
+        registerPath('GenerateStrums', mechanicBasePath + 'Objects/GenerateStrums.hx');
+        registerPath('GenerateObjects', mechanicBasePath + 'Objects/GenerateObjects.hx');
+
+        registerPath('BeatCharacterAnimation', mechanicBasePath + 'Effects/BeatCharacterAnimation.hx');
+        registerPath('DamageOnHit', mechanicBasePath + 'Effects/DamageOnHit.hx');
+        registerPath('ChangeCameraZoom', mechanicBasePath + 'Effects/ChangeCameraZoom.hx');
+    }
+
+
 
     public static function load(name:String):Bool
     {
@@ -320,14 +369,14 @@ class GalaxyCore
                 func +
                 '" because mechanic "' +
                 mechanic +
-                '" has no registered instance.'
+                '" has no registered functions.'
             );
             return null;
         }
 
         var functions:Dynamic = mechanicFunctions.get(mechanic);
 
-        if (instance == null)
+        if (functions == null)
             return null;
 
         if (!Reflect.hasField(functions, func))
@@ -472,6 +521,8 @@ class GalaxyCore
         mechanicFunctions = new StringMap<Dynamic>();
         mechanicPaths = new StringMap<String>();
         data = new StringMap<Dynamic>();
+
+        registerDefaultPaths();
 
         trace('[GalaxyCore] Reset.');
     }
