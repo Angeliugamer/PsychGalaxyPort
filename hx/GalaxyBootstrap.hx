@@ -1,0 +1,1 @@
+GalaxyCore.init();

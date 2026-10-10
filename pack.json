@@ -1,0 +1,6 @@
+{
+	"name": "FNGalaxy Port",
+	"description": "FNGalaxy Ported to Psych Engine 1.0.4",
+	"restart":false,
+	"color": [170, 0, 255]
+}

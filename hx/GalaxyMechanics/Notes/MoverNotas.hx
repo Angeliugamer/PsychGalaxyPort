@@ -39,8 +39,6 @@
  * ============================================================
  */
 
-import flixel.FlxSprite;
-
 
 /**
  * MoverNotas
@@ -1012,3 +1010,57 @@ class MoverNotas
         );
     }
 }
+
+
+// ============================================================
+// GALAXY CORE REGISTRATION
+// ============================================================
+
+GalaxyCore.registerFunctions(
+    'MoverNotas',
+    {
+        saveOriginalPosition: MoverNotas.saveOriginalPosition,
+        saveAllOriginalPositions: MoverNotas.saveAllOriginalPositions,
+
+        setPosition: MoverNotas.setPosition,
+        setNoteX: MoverNotas.setNoteX,
+        setNoteY: MoverNotas.setNoteY,
+
+        move: MoverNotas.move,
+        moveX: MoverNotas.moveX,
+        moveY: MoverNotas.moveY,
+
+        setFromOriginal: MoverNotas.setFromOriginal,
+        moveFromOriginal: MoverNotas.moveFromOriginal,
+
+        moveAll: MoverNotas.moveAll,
+        moveAllX: MoverNotas.moveAllX,
+        moveAllY: MoverNotas.moveAllY,
+
+        setAllPosition: MoverNotas.setAllPosition,
+        setAllFromOriginal: MoverNotas.setAllFromOriginal,
+
+        restore: MoverNotas.restore,
+        restoreAll: MoverNotas.restoreAll,
+
+        clearOriginalPositions: MoverNotas.clearOriginalPositions,
+
+        hasOriginalPosition: MoverNotas.hasOriginalPosition,
+        getOriginalX: MoverNotas.getOriginalX,
+        getOriginalY: MoverNotas.getOriginalY,
+
+        getPosition: MoverNotas.getPosition,
+        getOriginalPosition: MoverNotas.getOriginalPosition,
+        getOffsetFromOriginal: MoverNotas.getOffsetFromOriginal,
+
+        setOriginalX: MoverNotas.setOriginalX,
+        setOriginalY: MoverNotas.setOriginalY,
+
+        setCentered: MoverNotas.setCentered,
+
+        mirrorX: MoverNotas.mirrorX,
+        mirrorY: MoverNotas.mirrorY,
+
+        swap: MoverNotas.swap
+    }
+);
