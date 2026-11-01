@@ -1,12 +1,17 @@
 function onCreate()
-    debugPrint('Cargando GalaxyCoreTest...')
-
-    --addHScript('hx/GalaxyMechanics/Core/GalaxyCoreTest.hx')
     addHScript('hx/GalaxyMechanics/Core/GalaxyCore.hx')
-    --addHScript('hx/TestGalaxy.hx')
-
-    debugPrint('GalaxyCoreTest cargado.')
 end
 
 function onCreatePost()
+    local path = 'hx/GalaxyBootstrap.hx'
+
+    debugPrint('[TEST] Ruta: ' .. path)
+    debugPrint('[TEST] Antes: ' .. tostring(isRunning(path)))
+
+    addHScript(path, true)
+
+    debugPrint('[TEST] Despues: ' .. tostring(isRunning(path)))
+
+    local result = callOnHScript('galaxy_Bootstrap_ping', {})
+    debugPrint('[TEST] Ping: ' .. tostring(result))
 end

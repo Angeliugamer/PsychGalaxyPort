@@ -1,804 +1,404 @@
 /*
  * GalaxyCore.hx
+ * Núcleo de coordinación de PsychGalaxyPort para Psych Engine 1.0.4.
+ * Ruta: hx/GalaxyMechanics/Core/GalaxyCore.hx
  *
- * Núcleo del sistema de mecánicas Galaxy para Psych Engine 1.0.4
+ * CONTRATO DE COMUNICACIÓN
+ * 1) Lua carga este archivo con addHScript(...).
+ * 2) Lua llama a la API del núcleo con callOnHScript('galaxyCore_load', [...]).
+ * 3) Cada módulo expone funciones con nombres únicos:
+ *      galaxy_<NombreMecanica>_<funcion>
+ *    Ejemplos: galaxy_MoverNotas_init, galaxy_MoverNotas_onUpdate.
+ * 4) Las llamadas entre scripts usan callOnHScript(), igual que en UNRESPONSIVE.
+ * 5) Las rutas son relativas a la carpeta del mod y NO incluyen "mods/".
  *
- * Función:
- *  - Registrar mecánicas HScript.
- *  - Activarlas/desactivarlas.
- *  - Llamar funciones de mecánicas individuales.
- *  - Compartir datos entre Lua y HScript.
- *  - Mantener una lista de mecánicas cargadas.
- *
- * IMPORTANTE:
- * Este archivo NO contiene mecánicas concretas.
- *
- * No utiliza:
- *     class GalaxyCore
- *     static
- *     StringMap<Bool>
- *     StringMap<Dynamic>
- *     Array<Dynamic>
- *
- * HScript de Psych no está interpretando esas construcciones
- * de la misma manera que un archivo Haxe compilado.
- *
- * Ruta:
- *
- *     hx/GalaxyMechanics/Core/GalaxyCore.hx
- *
- * ============================================================
+ * IMPORTANTE
+ * callOnHScript busca por nombre entre los HScript activos; no selecciona un
+ * archivo concreto. Por eso los nombres públicos de los módulos deben ser únicos.
+ * La carga se marca como correcta cuando game.initHScript(path) no lanza error;
+ * Psych no proporciona aquí una confirmación independiente de que todas las
+ * funciones del módulo existan.
  */
-
 
 import haxe.ds.StringMap;
 
+var galaxyCoreInitialized:Bool = false;
+var galaxyMechanicBasePath:String = 'hx/GalaxyMechanics/';
 
-/*
- * ============================================================
- * ESTADO
- * ============================================================
- */
+// name -> true si el archivo fue solicitado/cargado sin lanzar excepción.
+var galaxyLoadedMechanics = new StringMap();
+// name -> true si la mecánica participa en dispatch.
+var galaxyEnabledMechanics = new StringMap();
+// name -> ruta del archivo HScript.
+var galaxyMechanicPaths = new StringMap();
+// Almacén de datos compartidos entre módulos.
+var galaxySharedData = new StringMap();
 
+var galaxyCoreLastLoadError:String = '';
+var galaxyCoreLastLoadPath:String = '';
+var galaxyCoreDispatchErrors:Int = 0;
+var galaxyCoreLastDispatchError:String = '';
 
-/*
- * Mecánicas actualmente cargadas.
- *
- * Se utiliza StringMap sin especificar tipo genérico porque
- * HScript de Psych no acepta la sintaxis <Tipo> que utilizamos
- * anteriormente.
- */
-var loadedMechanics = new StringMap();
-
-
-/*
- * Funciones expuestas por cada mecánica.
- */
-var mechanicFunctions = new StringMap();
-
-
-/*
- * Datos compartidos del sistema Galaxy.
- */
-var data = new StringMap();
-
-
-/*
- * Rutas registradas para cada mecánica.
- */
-var mechanicPaths = new StringMap();
-
-
-/*
- * Ruta base de las mecánicas.
- *
- * Esta ruta es relativa al mod.
- *
- * Estructura:
- *
- * FNGalaxy Port/
- * └── hx/
- *     └── GalaxyMechanics/
- *
- */
-var mechanicBasePath:String =
-    'hx/GalaxyMechanics/';
-
-
-/*
- * Indica si GalaxyCore ya fue inicializado.
- */
-var initialized:Bool = false;
-
-
-/*
- * ============================================================
- * INICIALIZACIÓN
- * ============================================================
- */
-
-
-function init():Bool
+function galaxyCore_init():Bool
 {
-    if (initialized)
+    if (galaxyCoreInitialized)
         return true;
 
-    initialized = true;
-
-    registerDefaultPaths();
-
+    galaxyCoreInitialized = true;
+    galaxyCore_registerDefaultPaths();
     return true;
 }
 
-
-/*
- * ============================================================
- * REGISTRO DE MECÁNICAS
- * ============================================================
- */
-
-
-/*
- * Registra una mecánica como cargada.
- */
-function register(name:String):Bool
+function galaxyCore_registerPath(name:String, path:String):Bool
 {
-    init();
+    if (name == null || name == '' || path == null || path == '')
+        return false;
+
+    galaxyMechanicPaths.set(name, path);
+        return true;
+}
+
+function galaxyCore_registerDefaultPaths():Void
+{
+    // NOTES
+    galaxyCore_registerPath('MoverNotas', galaxyMechanicBasePath + 'Notes/MoverNotas.hx');
+    galaxyCore_registerPath('CambiarVelocidadNotas', galaxyMechanicBasePath + 'Notes/CambiarVelocidadNotas.hx');
+    galaxyCore_registerPath('InvertirNotas', galaxyMechanicBasePath + 'Notes/InvertirNotas.hx');
+    galaxyCore_registerPath('RotarNotas', galaxyMechanicBasePath + 'Notes/RotarNotas.hx');
+    galaxyCore_registerPath('OcultarNotas', galaxyMechanicBasePath + 'Notes/OcultarNotas.hx');
+    galaxyCore_registerPath('EliminarNotas', galaxyMechanicBasePath + 'Notes/EliminarNotas.hx');
+    galaxyCore_registerPath('MoverSustains', galaxyMechanicBasePath + 'Notes/MoverSustains.hx');
+    galaxyCore_registerPath('CambiarAlphaNotas', galaxyMechanicBasePath + 'Notes/CambiarAlphaNotas.hx');
+
+    // STRUMS
+    galaxyCore_registerPath('MoverStrums', galaxyMechanicBasePath + 'Strums/MoverStrums.hx');
+    galaxyCore_registerPath('MoverStrumsVertical', galaxyMechanicBasePath + 'Strums/MoverStrumsVertical.hx');
+    galaxyCore_registerPath('MoverStrumsCircular', galaxyMechanicBasePath + 'Strums/MoverStrumsCircular.hx');
+    galaxyCore_registerPath('RotarStrums', galaxyMechanicBasePath + 'Strums/RotarStrums.hx');
+    galaxyCore_registerPath('StrumPerspective', galaxyMechanicBasePath + 'Strums/StrumPerspective.hx');
+
+    // WINDOW
+    galaxyCore_registerPath('MoverVentana', galaxyMechanicBasePath + 'Window/MoverVentana.hx');
+    galaxyCore_registerPath('RedimensionarVentana', galaxyMechanicBasePath + 'Window/RedimensionarVentana.hx');
+    galaxyCore_registerPath('VentanaSinusoidal', galaxyMechanicBasePath + 'Window/VentanaSinusoidal.hx');
+    galaxyCore_registerPath('VentanaShake', galaxyMechanicBasePath + 'Window/VentanaShake.hx');
+    galaxyCore_registerPath('VentanaCenter', galaxyMechanicBasePath + 'Window/VentanaCenter.hx');
+
+    // 3D
+    galaxyCore_registerPath('Note3D', galaxyMechanicBasePath + '3D/Note3D.hx');
+    galaxyCore_registerPath('Perspective', galaxyMechanicBasePath + '3D/Perspective.hx');
+    galaxyCore_registerPath('ToWorld', galaxyMechanicBasePath + '3D/ToWorld.hx');
+    galaxyCore_registerPath('ToScreen', galaxyMechanicBasePath + '3D/ToScreen.hx');
+    galaxyCore_registerPath('RenderPath', galaxyMechanicBasePath + '3D/RenderPath.hx');
+
+    // RENDER
+    galaxyCore_registerPath('GalaxyShader', galaxyMechanicBasePath + 'Render/GalaxyShader.hx');
+    galaxyCore_registerPath('GalaxyBlend', galaxyMechanicBasePath + 'Render/GalaxyBlend.hx');
+    galaxyCore_registerPath('Galaxy3D', galaxyMechanicBasePath + 'Render/Galaxy3D.hx');
+
+    // OBJECTS
+    galaxyCore_registerPath('CloneNotes', galaxyMechanicBasePath + 'Objects/CloneNotes.hx');
+    galaxyCore_registerPath('GenerateStrums', galaxyMechanicBasePath + 'Objects/GenerateStrums.hx');
+    galaxyCore_registerPath('GenerateObjects', galaxyMechanicBasePath + 'Objects/GenerateObjects.hx');
+
+    // EFFECTS
+    galaxyCore_registerPath('BeatCharacterAnimation', galaxyMechanicBasePath + 'Effects/BeatCharacterAnimation.hx');
+    galaxyCore_registerPath('DamageOnHit', galaxyMechanicBasePath + 'Effects/DamageOnHit.hx');
+    galaxyCore_registerPath('ChangeCameraZoom', galaxyMechanicBasePath + 'Effects/ChangeCameraZoom.hx');
+}
+
+function galaxyCore_getPath(name:String):String
+{
+    galaxyCore_init();
+    if (name == null || name == '' || !galaxyMechanicPaths.exists(name))
+        return null;
+    return galaxyMechanicPaths.get(name);
+}
+
+function galaxyCore_isLoaded(name:String):Bool
+{
+    return name != null && galaxyLoadedMechanics.exists(name) && galaxyLoadedMechanics.get(name) == true;
+}
+
+function galaxyCore_isEnabled(name:String):Bool
+{
+    return galaxyCore_isLoaded(name) && galaxyEnabledMechanics.exists(name) && galaxyEnabledMechanics.get(name) == true;
+}
+
+function galaxyCore_load(name:String):String
+{
+    galaxyCore_init();
+
+    galaxyCoreLastLoadError = '';
+    galaxyCoreLastLoadPath = '';
 
     if (name == null || name == '')
     {
+        galaxyCoreLastLoadError = 'Nombre de mecanica vacio.';
         return false;
     }
 
-    loadedMechanics.set(
-        name,
-        true
-    );
+    if (galaxyCore_isLoaded(name))
+    {
+        galaxyCoreLastLoadError = 'La mecanica ya esta registrada.';
+        galaxyCoreLastLoadPath = galaxyCore_getPath(name);
+        return galaxyCoreLastLoadPath;
+    }
 
-    return true;
-}
-
-
-/*
- * Registra las funciones de una mecánica.
- */
-function registerFunctions(
-    name:String,
-    functions:Dynamic
-):Bool
-{
-    if (name == null || name == '')
-        return false;
-
-    if (functions == null)
-        return false;
-
-    mechanicFunctions.set(
-        name, functions
-    );
-
-    loadedMechanics.set(
-        name, true
-    );
-
-    return true;
-}
-
-
-/*
- * Registra la ruta de una mecánica.
- */
-function registerPath(
-    name:String,
-    path:String
-):Bool
-{
-    if (name == null || name == '')
-        return false;
+    var path = galaxyCore_getPath(name);
 
     if (path == null || path == '')
-        return false;
-
-    mechanicPaths.set(
-        name, path
-    );
-
-    return true;
-}
-
-
-/*
- * ============================================================
- * RUTAS PREDETERMINADAS
- * ============================================================
- */
-
-
-function registerDefaultPaths():Void
-{
-    /*
-     * --------------------------------------------------------
-     * NOTES
-     * --------------------------------------------------------
-     */
-
-    registerPath('MoverNotas',
-        mechanicBasePath + 'Notes/MoverNotas.hx'
-    );
-
-    registerPath('CambiarVelocidadNotas',
-        mechanicBasePath + 'Notes/CambiarVelocidadNotas.hx'
-    );
-
-    registerPath('InvertirNotas',
-        mechanicBasePath + 'Notes/InvertirNotas.hx'
-    );
-
-    registerPath('RotarNotas',
-        mechanicBasePath + 'Notes/RotarNotas.hx'
-    );
-
-    registerPath('OcultarNotas',
-        mechanicBasePath + 'Notes/OcultarNotas.hx'
-    );
-
-    registerPath('EliminarNotas',
-        mechanicBasePath + 'Notes/EliminarNotas.hx'
-    );
-
-    registerPath('MoverSustains',
-        mechanicBasePath + 'Notes/MoverSustains.hx'
-    );
-
-    registerPath('CambiarAlphaNotas',
-        mechanicBasePath + 'Notes/CambiarAlphaNotas.hx'
-    );
-
-
-    /*
-     * --------------------------------------------------------
-     * STRUMS
-     * --------------------------------------------------------
-     */
-
-    registerPath('MoverStrums',
-        mechanicBasePath + 'Strums/MoverStrums.hx'
-    );
-
-    registerPath('MoverStrumsVertical',
-        mechanicBasePath + 'Strums/MoverStrumsVertical.hx'
-    );
-
-    registerPath('MoverStrumsCircular',
-        mechanicBasePath + 'Strums/MoverStrumsCircular.hx'
-    );
-
-    registerPath('RotarStrums',
-        mechanicBasePath + 'Strums/RotarStrums.hx'
-    );
-
-    registerPath('StrumPerspective',
-        mechanicBasePath + 'Strums/StrumPerspective.hx'
-    );
-
-
-    /*
-     * --------------------------------------------------------
-     * WINDOW
-     * --------------------------------------------------------
-     */
-
-    registerPath('MoverVentana',
-        mechanicBasePath + 'Window/MoverVentana.hx'
-    );
-
-    registerPath('RedimensionarVentana',
-        mechanicBasePath + 'Window/RedimensionarVentana.hx'
-    );
-
-    registerPath('VentanaSinusoidal',
-        mechanicBasePath + 'Window/VentanaSinusoidal.hx'
-    );
-
-    registerPath('VentanaShake',
-        mechanicBasePath + 'Window/VentanaShake.hx'
-    );
-
-    registerPath('VentanaCenter',
-        mechanicBasePath + 'Window/VentanaCenter.hx'
-    );
-
-
-    /*
-     * --------------------------------------------------------
-     * 3D
-     * --------------------------------------------------------
-     */
-
-    registerPath('Note3D',
-        mechanicBasePath + '3D/Note3D.hx'
-    );
-
-    registerPath('Perspective',
-        mechanicBasePath + '3D/Perspective.hx'
-    );
-
-    registerPath('ToWorld',
-        mechanicBasePath + '3D/ToWorld.hx'
-    );
-
-    registerPath('ToScreen',
-        mechanicBasePath + '3D/ToScreen.hx'
-    );
-
-    registerPath('RenderPath',
-        mechanicBasePath + '3D/RenderPath.hx'
-    );
-
-
-    /*
-     * --------------------------------------------------------
-     * RENDER
-     * --------------------------------------------------------
-     */
-
-    registerPath('GalaxyShader',
-        mechanicBasePath + 'Render/GalaxyShader.hx'
-    );
-
-    registerPath('GalaxyBlend',
-        mechanicBasePath + 'Render/GalaxyBlend.hx'
-    );
-
-    registerPath('Galaxy3D',
-        mechanicBasePath + 'Render/Galaxy3D.hx'
-    );
-
-
-    /*
-     * --------------------------------------------------------
-     * OBJECTS
-     * --------------------------------------------------------
-     */
-
-    registerPath('CloneNotes',
-        mechanicBasePath + 'Objects/CloneNotes.hx'
-    );
-
-    registerPath('GenerateStrums',
-        mechanicBasePath + 'Objects/GenerateStrums.hx'
-    );
-
-    registerPath('GenerateObjects',
-        mechanicBasePath + 'Objects/GenerateObjects.hx'
-    );
-
-
-    /*
-     * --------------------------------------------------------
-     * EFFECTS
-     * --------------------------------------------------------
-     */
-
-    registerPath('BeatCharacterAnimation',
-        mechanicBasePath + 'Effects/BeatCharacterAnimation.hx'
-    );
-
-    registerPath('DamageOnHit',
-        mechanicBasePath + 'Effects/DamageOnHit.hx'
-    );
-
-    registerPath('ChangeCameraZoom',
-        mechanicBasePath + 'Effects/ChangeCameraZoom.hx'
-    );
-}
-
-
-/*
- * ============================================================
- * CARGA
- * ============================================================
- */
-
-
-/*
- * Devuelve la ruta registrada de una mecánica.
- */
-function getMechanicPath(
-    name:String
-):String
-{
-    init();
-
-    if (name == null || name == '')
+    {
+        galaxyCoreLastLoadError = 'No existe una ruta registrada para: ' + name;
         return null;
+    }
 
-    if (!mechanicPaths.exists(name))
-        return null;
+    galaxyCoreLastLoadPath = path;
+    galaxyCoreLastLoadError = 'Ruta preparada para addHScript().';
 
-    return mechanicPaths.get(name);
+    return path;
 }
 
-
-/*
- * Comprueba si una mecánica está cargada.
- */
-function isLoaded(
-    name:String
-):Bool
+function galaxyCore_loadMany(names:Array):Array
 {
-    if (name == null)
-        return false;
+    galaxyCore_init();
 
-    return
-        mechanicPaths.exists(name)
-        &&
-        loadedMechanics.exists(name)
-        &&
-        loadedMechanics.get(name) == true;
-}
+    if (names == null)
+        return [];
 
-
-/*
- * Carga una mecánica.
- *
- * La carga física del archivo HScript se realiza mediante
- * PlayState.initHScript().
- */
-function load(
-    name:String
-):Bool
-{
-    init();
-
-    if (name == null || name == '')
-        return false;
-
-    if (isLoaded(name))
-        return true;
-
-    if (!mechanicPaths.exists(name))
-        return false;
-
-    var path:String =
-        mechanicPaths.get(name);
-
-    if (path == null || path == '')
-        return false;
-
-    game.initHScript(path);
-    
-    loadedMechanics.set(name, true);
-
-    return isLoaded(name);
-}
-
-
-/*
- * ============================================================
- * DESREGISTRO
- * ============================================================
- */
-
-
-/*
- * Desregistra una mecánica del sistema Galaxy.
- *
- * Esto NO elimina físicamente el HScript de Psych.
- */
-function unregister(
-    name:String
-):Bool
-{
-    if (!isLoaded(name))
-        return false;
-
-
-    loadedMechanics.remove(name);
-
-
-    mechanicFunctions.remove(name);
-
-
-    return true;
-}
-
-
-/*
- * ============================================================
- * MECÁNICAS CARGADAS
- * ============================================================
- */
-
-
-/*
- * Devuelve los nombres de las mecánicas cargadas.
- */
-function getLoaded():Array
-{
     var result:Array = [];
 
-
-    for (name in loadedMechanics.keys())
+    for (name in names)
     {
-        result.push(name);
-    }
+        var path = galaxyCore_load(Std.string(name));
 
+        if (path != null)
+            result.push(path);
+    }
 
     return result;
 }
 
+function galaxyCore_getLastLoadError():String
+{
+    return galaxyCoreLastLoadError;
+}
 
-/*
- * ============================================================
- * DATOS COMPARTIDOS
- * ============================================================
- */
+function galaxyCore_getLastLoadPath():String
+{
+    return galaxyCoreLastLoadPath;
+}
 
+function galaxyCore_markLoaded(name:String):Bool
+{
+    galaxyCore_init();
 
-/*
- * Guarda un dato global de Galaxy.
- */
-function setData(
-    name:String,
-    value:Dynamic
-):Void
+    if (name == null || name == '')
+        return false;
+
+    if (!galaxyMechanicPaths.exists(name))
+        return false;
+
+    galaxyLoadedMechanics.set(name, true);
+    galaxyEnabledMechanics.set(name, true);
+
+    return true;
+}
+
+function galaxyCore_enable(name:String):Bool
+{
+    if (!galaxyCore_isLoaded(name))
+        return false;
+
+    galaxyEnabledMechanics.set(name, true);
+    return true;
+}
+
+function galaxyCore_disable(name:String):Bool
+{
+    if (!galaxyCore_isLoaded(name))
+        return false;
+
+    galaxyEnabledMechanics.set(name, false);
+    return true;
+}
+
+function galaxyCore_getEnabled():Array
+{
+    var result:Array = [];
+
+    for (name in galaxyLoadedMechanics.keys())
+    {
+        if (galaxyCore_isEnabled(name))
+            result.push(name);
+    }
+
+    return result;
+}
+
+function galaxyCore_unregister(name:String):Bool
+{
+    if (!galaxyCore_isLoaded(name))
+        return false;
+
+    galaxyEnabledMechanics.remove(name);
+    galaxyLoadedMechanics.remove(name);
+
+    return true;
+}
+
+function galaxyCore_getLoaded():Array
+{
+    var result:Array = [];
+    for (name in galaxyLoadedMechanics.keys())
+        result.push(name);
+    return result;
+}
+
+function galaxyCore_setData(name:String, value:Dynamic):Void
 {
     if (name == null || name == '')
         return;
-
-
-    data.set(
-        name,
-        value
-    );
+    galaxySharedData.set(name, value);
 }
 
-
-/*
- * Obtiene un dato global.
- */
-function getData(
-    name:String
-):Dynamic
+function galaxyCore_getData(name:String):Dynamic
 {
-    if (name == null || name == '')
+    if (name == null || name == '' || !galaxySharedData.exists(name))
         return null;
-
-
-    if (!data.exists(name))
-        return null;
-
-
-    return data.get(name);
+    return galaxySharedData.get(name);
 }
 
-
-/*
- * Comprueba si existe un dato.
- */
-function hasData(
-    name:String
-):Bool
+function galaxyCore_hasData(name:String):Bool
 {
-    return
-        name != null
-        &&
-        data.exists(name);
+    return name != null && galaxySharedData.exists(name);
 }
 
-
-/*
- * Elimina un dato.
- */
-function removeData(
-    name:String
-):Bool
+function galaxyCore_removeData(name:String):Bool
 {
-    if (name == null || !data.exists(name))
+    if (name == null || !galaxySharedData.exists(name))
         return false;
-
-
-    return data.remove(name);
+    return galaxySharedData.remove(name);
 }
 
-
-/*
- * ============================================================
- * LLAMADAS A MECÁNICAS
- * ============================================================
- */
-
-
-/*
- * Llama una función registrada de una mecánica.
- */
-function call(
-    mechanic:String,
-    func:String,
-    args:Array
-):Dynamic
+// Construye el nombre público y único que debe exponer cada módulo.
+function galaxyCore_functionName(mechanic:String, func:String):String
 {
-    if (!isLoaded(mechanic))
+    if (mechanic == null || mechanic == '' || func == null || func == '')
+        return null;
+    return 'galaxy_' + mechanic + '_' + func;
+}
+
+// Llama una función exportada por un módulo mediante el mecanismo probado:
+// callOnHScript('nombreUnico', argumentos).
+function galaxyCore_call(mechanic:String, func:String, args:Array):Dynamic
+{
+    if (!galaxyCore_isLoaded(mechanic))
         return null;
 
-
-    if (!mechanicFunctions.exists(mechanic))
+    var functionName = galaxyCore_functionName(mechanic, func);
+    if (functionName == null)
         return null;
-
-
-    var functions:Dynamic =
-        mechanicFunctions.get(mechanic);
-
-
-    if (functions == null)
-        return null;
-
-
-    if (!Reflect.hasField(
-        functions,
-        func
-    ))
-    {
-        return null;
-    }
-
-
-    var fn:Dynamic =
-        Reflect.field(
-            functions,
-            func
-        );
-
-
-    if (fn == null)
-        return null;
-
 
     if (args == null)
         args = [];
 
-
-    return Reflect.callMethod(
-        functions,
-        fn,
-        args
-    );
+    return callOnHScript(functionName, args);
 }
 
-
-/*
- * ============================================================
- * CALLBACKS
- * ============================================================
- */
-
-
-/*
- * Estos callbacks serán utilizados posteriormente
- * para distribuir los eventos de Psych a las mecánicas.
- */
-
-
-function onCreate():Void
+// Distribuye callbacks únicamente a módulos cargados y habilitados.
+// Cada módulo debe exponer, por ejemplo, galaxy_MoverNotas_onUpdate(elapsed).
+function galaxyCore_dispatch(callback:String, args:Array):Void
 {
-    dispatch(
-        'onCreate',
-        []
-    );
-}
+    if (callback == null || callback == '')
+        return;
 
+    if (args == null)
+        args = [];
 
-function onCreatePost():Void
-{
-    dispatch(
-        'onCreatePost',
-        []
-    );
-}
+    var names = galaxyCore_getEnabled();
 
-
-function onUpdate(
-    elapsed:Float
-):Void
-{
-    dispatch(
-        'onUpdate',
-        [elapsed]
-    );
-}
-
-
-function onUpdatePost(
-    elapsed:Float
-):Void
-{
-    dispatch(
-        'onUpdatePost',
-        [elapsed]
-    );
-}
-
-
-function onBeatHit(
-    curBeat:Int
-):Void
-{
-    dispatch(
-        'onBeatHit',
-        [curBeat]
-    );
-}
-
-
-function onStepHit(
-    curStep:Int
-):Void
-{
-    dispatch(
-        'onStepHit',
-        [curStep]
-    );
-}
-
-
-function onSongStart():Void
-{
-    dispatch(
-        'onSongStart',
-        []
-    );
-}
-
-
-function onEndSong():Void
-{
-    dispatch(
-        'onEndSong',
-        []
-    );
-}
-
-
-/*
- * ============================================================
- * DISPATCHER
- * ============================================================
- */
-
-
-/*
- * Envía un callback a todas las mecánicas registradas.
- */
-function dispatch(
-    callback:String,
-    args:Array
-):Void
-{
-    for (mechanic in loadedMechanics.keys())
+    for (name in names)
     {
-        if (!loadedMechanics.get(mechanic))
+        var functionName =
+            galaxyCore_functionName(name, callback);
+
+        if (functionName == null)
             continue;
 
-        call(
-            mechanic,
-            callback,
-            args
-        );
+        try
+        {
+            callOnHScript(functionName, args);
+        }
+        catch (e:Dynamic)
+        {
+            galaxyCoreDispatchErrors = galaxyCoreDispatchErrors + 1;
+            galaxyCoreLastDispatchError = name + ' / ' + callback + ': ' + Std.string(e);
+        }
     }
 }
 
-
-/*
- * ============================================================
- * LIMPIEZA
- * ============================================================
- */
-
-
-/*
- * Reinicia el estado interno del Core.
- */
-function reset():Void
+function galaxyCore_getDispatchErrors():Int
 {
-    loadedMechanics =
-        new StringMap();
+    return galaxyCoreDispatchErrors;
+}
 
+function galaxyCore_getLastDispatchError():String
+{
+    return galaxyCoreLastDispatchError;
+}
 
-    mechanicFunctions =
-        new StringMap();
+// Callbacks del motor. No se declara curBeat/curStep como parámetros del
+// callback del motor: se leen desde PlayState y se pasan a los módulos.
+function onCreate():Void
+{
+    galaxyCore_init();
+    galaxyCore_dispatch('onCreate', []);
+}
 
+function onCreatePost():Void
+{
+    galaxyCore_dispatch('onCreatePost', []);
+}
 
-    mechanicPaths =
-        new StringMap();
+function onUpdate(elapsed:Float):Void
+{
+    galaxyCore_dispatch('onUpdate', [elapsed]);
+}
 
+function onUpdatePost(elapsed:Float):Void
+{
+    galaxyCore_dispatch('onUpdatePost', [elapsed]);
+}
 
-    data =
-        new StringMap();
+function onBeatHit():Void
+{
+    galaxyCore_dispatch('onBeatHit', [game.curBeat]);
+}
 
+function onStepHit():Void
+{
+    galaxyCore_dispatch('onStepHit', [game.curStep]);
+}
 
-    initialized = false;
+function onSongStart():Void
+{
+    galaxyCore_dispatch('onSongStart', []);
+}
 
+// Nota: el retorno de onEndSong no se intercepta aquí todavía. Cuando alguna
+// mecánica necesite detener el final de canción, definiremos ese contrato aparte.
+function onEndSong():Void
+{
+    galaxyCore_dispatch('onEndSong', []);
+}
 
-    init();
+function galaxyCore_reset():Void
+{
+    galaxyLoadedMechanics = new StringMap();
+    galaxyEnabledMechanics = new StringMap();
+    galaxyMechanicPaths = new StringMap();
+    galaxySharedData = new StringMap();
+    galaxyCoreInitialized = false;
+    galaxyCore_init();
 }
