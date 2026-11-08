@@ -110,8 +110,10 @@ function galaxyCore_registerDefaultPaths():Void
 function galaxyCore_getPath(name:String):String
 {
     galaxyCore_init();
+    
     if (name == null || name == '' || !galaxyMechanicPaths.exists(name))
-        return null;
+        return '';
+
     return galaxyMechanicPaths.get(name);
 }
 
