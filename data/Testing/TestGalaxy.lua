@@ -8,7 +8,7 @@ end
 function onCreatePost()
     callOnHScript('galaxy_Bootstrap_init', {})
 
-    -- Registrar ambas mecanicas.
+    -- Registrar las tres mecanicas.
     callOnHScript('galaxyCore_registerPath', {
         'PruebaIndependencia',
         'hx/GalaxyMechanics/Notes/PruebaIndependencia.hx'
@@ -19,61 +19,73 @@ function onCreatePost()
         'hx/GalaxyMechanics/Notes/PruebaIndependenciaB.hx'
     })
 
-    -- Cargar ambas mecanicas.
-    local loadA = callOnLuas('galaxyLoadMechanic', {
-        'PruebaIndependencia'
+    callOnHScript('galaxyCore_registerPath', {
+        'PruebaError',
+        'hx/GalaxyMechanics/Notes/PruebaError.hx'
     })
 
-    local loadB = callOnLuas('galaxyLoadMechanic', {
-        'PruebaIndependenciaB'
-    })
+    -- Cargar las tres mecanicas.
+    callOnLuas('galaxyLoadMechanic', {'PruebaIndependencia'})
+    callOnLuas('galaxyLoadMechanic', {'PruebaIndependenciaB'})
+    callOnLuas('galaxyLoadMechanic', {'PruebaError'})
 
-    -- Desactivar solamente la mecanica B.
-    callOnHScript('galaxy_Bootstrap_disableMechanic', {
-        'PruebaIndependenciaB'
-    })
+    -- Reiniciar los contadores de las mecanicas funcionales.
+    callOnHScript('galaxy_PruebaIndependencia_init', {})
+    callOnHScript('galaxy_PruebaIndependenciaB_init', {})
 
-    -- Primer despacho: A recibe el callback, B no.
+    -- Obtener el numero de errores antes del despacho.
+    local errorsBefore = callOnHScript(
+        'galaxyCore_getDispatchErrors',
+        {}
+    )
+
+    -- Despachar un callback: PruebaError debe fallar.
     callOnHScript('galaxyCore_dispatch', {
         'onUpdate',
         {0.016}
     })
 
-    local countA1 = callOnHScript(
+    -- Consultar los contadores.
+    local countA = callOnHScript(
         'galaxy_PruebaIndependencia_getUpdateCount',
         {}
     )
 
-    local countB1 = callOnHScript(
+    local countB = callOnHScript(
         'galaxy_PruebaIndependenciaB_getUpdateCount',
         {}
     )
 
-    -- Reactivar B.
-    callOnHScript('galaxy_Bootstrap_enableMechanic', {
-        'PruebaIndependenciaB'
-    })
-
-    -- Segundo despacho: ambas reciben el callback.
-    callOnHScript('galaxyCore_dispatch', {
-        'onUpdate',
-        {0.016}
-    })
-
-    local countA2 = callOnHScript(
-        'galaxy_PruebaIndependencia_getUpdateCount',
+    -- Consultar el registro de errores.
+    local errorsAfter = callOnHScript(
+        'galaxyCore_getDispatchErrors',
         {}
     )
 
-    local countB2 = callOnHScript(
-        'galaxy_PruebaIndependenciaB_getUpdateCount',
+    local lastError = callOnHScript(
+        'galaxyCore_getLastDispatchError',
         {}
     )
 
     debugPrint(
-        '[MULTI CALLBACK TEST] A=' .. tostring(countA1) ..
-        '->' .. tostring(countA2) ..
-        ' | B=' .. tostring(countB1) ..
-        '->' .. tostring(countB2)
+        '[ERROR ISOLATION] A=' .. tostring(countA) ..
+        ' | B=' .. tostring(countB) ..
+        ' | errores=' .. tostring(errorsAfter - errorsBefore)
+    )
+
+    debugPrint(
+        '[ERROR DETAILS] ' .. tostring(lastError)
+    )
+
+    debugPrint('[CATCH TEST] ' ..
+        tostring(callOnHScript('galaxyCore_testCatch', {}))
+    )
+
+    debugPrint('[EXTERNAL CATCH TEST] ' ..
+        tostring(callOnHScript('galaxyCore_testExternalCatch', {}))
+    )
+
+    debugPrint('[EXTERNAL SAFE TEST] ' ..
+        tostring(callOnHScript('galaxyCore_testExternalSafe', {}))
     )
 end

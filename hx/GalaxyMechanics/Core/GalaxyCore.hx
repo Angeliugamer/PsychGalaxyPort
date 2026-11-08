@@ -330,12 +330,21 @@ function galaxyCore_dispatch(callback:String, args:Array):Void
 
         try
         {
-            callOnHScript(functionName, args);
+            var result:Dynamic = callOnHScript(functionName, args);
+
+            if (result != null &&
+                StringTools.startsWith(Std.string(result), '[GALAXY_ERROR]'))
+            {
+                galaxyCoreDispatchErrors = galaxyCoreDispatchErrors + 1;
+                galaxyCoreLastDispatchError =
+                    name + ' / ' + callback + ': ' + Std.string(result);
+            }
         }
         catch (e:Dynamic)
         {
             galaxyCoreDispatchErrors = galaxyCoreDispatchErrors + 1;
-            galaxyCoreLastDispatchError = name + ' / ' + callback + ': ' + Std.string(e);
+            galaxyCoreLastDispatchError =
+                name + ' / ' + callback + ': ' + Std.string(e);
         }
     }
 }
@@ -348,6 +357,40 @@ function galaxyCore_getDispatchErrors():Int
 function galaxyCore_getLastDispatchError():String
 {
     return galaxyCoreLastDispatchError;
+}
+
+function galaxyCore_testCatch():String
+{
+    try
+    {
+        throw 'Error de prueba del propio GalaxyCore';
+    }
+    catch (e:Dynamic)
+    {
+        return 'CAPTURADO: ' + Std.string(e);
+    }
+
+    return 'NO CAPTURADO';
+}
+
+function galaxyCore_testExternalCatch():String
+{
+    try
+    {
+        callOnHScript('galaxy_PruebaError_testThrow', []);
+        return 'SIN EXCEPCION';
+    }
+    catch (e:Dynamic)
+    {
+        return 'CAPTURADO: ' + Std.string(e);
+    }
+}
+
+function galaxyCore_testExternalSafe():String
+{
+    return Std.string(
+        callOnHScript('galaxy_PruebaError_testSafe', [])
+    );
 }
 
 // Callbacks del motor. No se declara curBeat/curStep como parámetros del

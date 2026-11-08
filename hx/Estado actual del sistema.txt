@@ -1,0 +1,11 @@
+Hemos validado:
+1. Carga física de mecánicas HScript.
+2. Inicialización mediante Bootstrap.
+3. Registro de mecánicas en GalaxyCore.
+4. Prevención de cargas duplicadas.
+5. Activación y desactivación individual.
+6. Reactivación de mecánicas.
+7. Despacho de callbacks.
+8. Independencia de callbacks entre varias mecánicas.
+9. Captura y registro de errores individuales durante el 
+despacho de callbacks mediante protección interna de cada mecánica.
