@@ -61,6 +61,32 @@ function galaxy_MoverNotas_testCoreCall():String
     }
 }
 
+function galaxy_MoverNotas_protect(
+    callbackName:String, action:Void->Void
+):String
+{
+    try
+    {
+        action();
+        return '';
+    }
+    catch (e:Dynamic)
+    {
+        return '[GALAXY_ERROR] ' + Std.string(e);
+    }
+}
+
+function galaxy_MoverNotas_testProtection():String
+{
+    return galaxy_MoverNotas_protect(
+        'test',
+        function():Void
+        {
+            throw 'Error intencional de prueba en MoverNotas';
+        }
+    );
+}
+
 function galaxy_MoverNotas_onCreate():Void
 {
     galaxyMoverNotasCreateCount = galaxyMoverNotasCreateCount + 1;
@@ -71,10 +97,15 @@ function galaxy_MoverNotas_onCreatePost():Void
     galaxyMoverNotasCreatePostCount = galaxyMoverNotasCreatePostCount + 1;
 }
 
-function galaxy_MoverNotas_onUpdate(elapsed:Float):Void
+function galaxy_MoverNotas_onUpdate(elapsed:Float):String
 {
-    galaxyMoverNotasUpdateCount = galaxyMoverNotasUpdateCount + 1;
-    galaxyMoverNotasLastElapsed = elapsed;
+    return galaxy_MoverNotas_protect('onUpdate', function():Void
+        {
+            galaxyMoverNotasUpdateCount = galaxyMoverNotasUpdateCount + 1;
+
+            galaxyMoverNotasLastElapsed = elapsed;
+        }
+    );
 }
 
 function galaxy_MoverNotas_onUpdatePost(elapsed:Float):Void
